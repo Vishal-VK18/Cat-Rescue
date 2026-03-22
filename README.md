@@ -11,6 +11,10 @@ pinned: false
 
 > A grid-based reinforcement learning environment where an AI agent navigates rooms to rescue trapped cats.
 
+🎮 **Live Demo:** https://vizxal-cat-rescue.hf.space
+
+🤗 **HF Space:** https://huggingface.co/spaces/Vizxal/Cat-Rescue/tree/main
+
 ---
 
 ## 🎮 Game Concept
@@ -48,6 +52,7 @@ Cat-Rescue/
 ├── rewards.py       # Reward schedule — CatRescueRewards
 ├── grader.py        # Episode scoring — CatRescueGrader
 ├── server.py        # FastAPI server (OpenEnv HTTP API)
+├── index.html       # Human playable UI
 ├── Dockerfile       # Container build for HF Spaces
 └── requirements.txt # Python dependencies
 ```
@@ -81,7 +86,7 @@ docker run -p 7860:7860 cat-rescue
 ## 🌐 API Endpoints
 
 ### `GET /`
-Health check — confirms the server is up.
+Serves the human playable UI.
 
 ### `POST /reset`
 Start a new episode. Re-initialises the environment.
@@ -131,7 +136,7 @@ Score a completed episode log.
 import requests
 import random
 
-BASE = "http://localhost:7860"
+BASE = "https://vizxal-cat-rescue.hf.space"
 
 # 1. Start a new episode on level 2
 obs = requests.post(f"{BASE}/reset", json={"level": 2, "seed": 0}).json()
