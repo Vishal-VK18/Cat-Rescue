@@ -1,0 +1,12 @@
+# Cat Rescue OpenEnv — Python dependencies
+# Install with: pip install -r requirements.txt
+
+# Web server
+fastapi==0.115.12
+uvicorn[standard]==0.34.0
+
+# OpenEnv base interface
+openenv-core
+
+# Data validation (FastAPI depends on this)
+pydantic==2.11.1
