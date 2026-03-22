@@ -20,6 +20,8 @@ HuggingFace Spaces expects port 7860, which is why we default to it.
 
 from __future__ import annotations
 
+import os
+
 from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException
@@ -108,13 +110,17 @@ class GradeRequest(BaseModel):
 # Endpoints
 # ---------------------------------------------------------------------------
 
+# Absolute path to the directory that contains server.py
+# (works both locally and inside a Docker container)
+_HERE = os.path.dirname(os.path.abspath(__file__))
+
 @app.get("/", tags=["UI"])
 def root() -> FileResponse:
     """
     Serve the game UI.
     Returns index.html so players can open the root URL in a browser.
     """
-    return FileResponse("index.html", media_type="text/html")
+    return FileResponse(os.path.join(_HERE, "index.html"), media_type="text/html")
 
 
 @app.post("/reset", tags=["OpenEnv"])
