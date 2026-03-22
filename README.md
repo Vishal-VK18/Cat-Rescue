@@ -1,6 +1,14 @@
+---
+title: Cat Rescue
+emoji: 🐱
+colorFrom: blue
+colorTo: green
+sdk: docker
+pinned: false
+---
+
 # 🐱 Cat Rescue — OpenEnv Environment
 
-> **Meta × PyTorch OpenEnv Hackathon by Scaler**
 > A grid-based reinforcement learning environment where an AI agent navigates rooms to rescue trapped cats.
 
 ---
@@ -34,7 +42,6 @@ The agent starts at the top-left corner of a grid and must reach every cat befor
 ---
 
 ## 📁 Project Structure
-
 ```
 Cat-Rescue/
 ├── environment.py   # Core game logic — CatRescueEnv
@@ -48,7 +55,6 @@ Cat-Rescue/
 ---
 
 ## 🚀 Running Locally
-
 ```bash
 # Install dependencies
 pip install -r requirements.txt
@@ -62,7 +68,6 @@ Open the interactive API docs at **[http://localhost:7860/docs](http://localhost
 ---
 
 ## 🐳 Running with Docker
-
 ```bash
 # Build the image
 docker build -t cat-rescue .
@@ -97,7 +102,7 @@ Take one action. Returns the new observation, reward, done flag, and info dict.
 **Response:**
 ```json
 {
-  "observation": { "grid": [...], "agent_pos": [0,1], "cats_rescued": 0, ... },
+  "observation": { "grid": [...], "agent_pos": [0,1], "cats_rescued": 0 },
   "reward": -0.1,
   "done": false,
   "info": { "event": "step", "cats_rescued": 0, "step_count": 1 }
@@ -105,7 +110,7 @@ Take one action. Returns the new observation, reward, done flag, and info dict.
 ```
 
 ### `GET /state`
-Read the current grid state **without** advancing the episode.
+Read the current grid state without advancing the episode.
 
 ### `POST /grade`
 Score a completed episode log.
@@ -114,7 +119,7 @@ Score a completed episode log.
 ```json
 {
   "episode_log": [
-    { "action": 1, "reward": -0.1, "done": false, "info": { ... } }
+    { "action": 1, "reward": -0.1, "done": false, "info": {} }
   ]
 }
 ```
@@ -122,9 +127,9 @@ Score a completed episode log.
 ---
 
 ## 🤖 Quickstart Agent Loop
-
 ```python
 import requests
+import random
 
 BASE = "http://localhost:7860"
 
@@ -136,7 +141,7 @@ episode_log = []
 
 # 2. Run a random agent
 while not done:
-    action = random.randint(0, 3)           # replace with your policy
+    action = random.randint(0, 3)
     resp = requests.post(f"{BASE}/step", json={"action": action}).json()
     done = resp["done"]
     episode_log.append({
@@ -155,12 +160,12 @@ print(result)
 
 ## 🏗️ Deploying to Hugging Face Spaces
 
-1. Create a new Space with **Docker** as the SDK.
-2. Push this repository to the Space.
-3. HF Spaces automatically builds the Dockerfile and routes traffic to port `7860`.
+1. Create a new Space with **Docker** as the SDK
+2. Push this repository to the Space
+3. HF Spaces automatically builds the Dockerfile and routes traffic to port `7860`
 
 ---
 
 ## 📜 License
 
-MIT — built for the **Meta × PyTorch OpenEnv Hackathon by Scaler**.
+MIT
