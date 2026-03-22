@@ -24,6 +24,7 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 # ---------------------------------------------------------------------------
@@ -107,13 +108,13 @@ class GradeRequest(BaseModel):
 # Endpoints
 # ---------------------------------------------------------------------------
 
-@app.get("/", tags=["Health"])
-def root() -> Dict[str, str]:
+@app.get("/", tags=["UI"])
+def root() -> FileResponse:
     """
-    Health-check endpoint.
-    Returns a short message confirming the server is running.
+    Serve the game UI.
+    Returns index.html so players can open the root URL in a browser.
     """
-    return {"status": "ok", "message": "Cat Rescue OpenEnv server is running 🐱"}
+    return FileResponse("index.html", media_type="text/html")
 
 
 @app.post("/reset", tags=["OpenEnv"])

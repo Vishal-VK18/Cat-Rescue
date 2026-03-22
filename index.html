@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🐱 Cat Rescue — OpenEnv</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ── Design Tokens ─────────────────────────────────────────── */
+    :root {
+      --bg:          #0a0a0f;
+      --surface:     #13131a;
+      --surface2:    #1c1c28;
+      --border:      #2a2a3d;
+      --accent:      #7c6ef5;
+      --accent2:     #f56ef5;
+      --gold:        #f5c842;
+      --green:       #42f5a7;
+      --red:         #f55a5a;
+      --text:        #e8e8f0;
+      --muted:       #7a7a9a;
+      --cell-empty:  #1e1e2e;
+      --cell-hover:  #25253a;
+      --radius:      14px;
+      --radius-sm:   8px;
+      --shadow:      0 8px 32px rgba(0,0,0,.5);
+    }
+
+    /* ── Reset & Base ──────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+      background-image:
+        radial-gradient(ellipse 80% 60% at 20% -10%, rgba(124,110,245,.18) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 80% 110%, rgba(245,110,245,.12) 0%, transparent 55%);
+    }
+
+    /* ── Layout ────────────────────────────────────────────────── */
+    .app {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 24px 16px 48px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+    }
+
+    /* ── Header ────────────────────────────────────────────────── */
+    header {
+      text-align: center;
+    }
+    header h1 {
+      font-size: clamp(1.8rem, 5vw, 2.8rem);
+      font-weight: 900;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -1px;
+    }
+    header p {
+      color: var(--muted);
+      font-size: .9rem;
+      margin-top: 4px;
+    }
+
+    /* ── Controls Bar ──────────────────────────────────────────── */
+    .controls-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+      width: 100%;
+    }
+
+    .level-group {
+      display: flex;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 50px;
+      padding: 4px;
+      gap: 2px;
+    }
+    .level-btn {
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-family: 'Inter', sans-serif;
+      font-size: .85rem;
+      font-weight: 600;
+      padding: 6px 18px;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: background .2s, color .2s;
+    }
+    .level-btn.active {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+    }
+
+    .new-game-btn {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border: none;
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      font-size: .9rem;
+      font-weight: 700;
+      padding: 10px 24px;
+      border-radius: 50px;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(124,110,245,.4);
+      transition: transform .15s, box-shadow .15s;
+    }
+    .new-game-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 28px rgba(124,110,245,.55); }
+    .new-game-btn:active { transform: translateY(0); }
+
+    /* ── Stats ─────────────────────────────────────────────────── */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      width: 100%;
+      max-width: 480px;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 10px;
+      text-align: center;
+      transition: border-color .3s;
+    }
+    .stat-card .label {
+      font-size: .72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .stat-card .value {
+      font-size: 1.6rem;
+      font-weight: 900;
+      line-height: 1;
+    }
+    #stat-score  .value { color: var(--gold); }
+    #stat-steps  .value { color: var(--accent); }
+    #stat-cats   .value { color: var(--green); }
+
+    /* bump animation when a value changes */
+    @keyframes bump {
+      0%   { transform: scale(1); }
+      40%  { transform: scale(1.35); }
+      100% { transform: scale(1); }
+    }
+    .bump { animation: bump .35s ease; }
+
+    /* ── Game Grid ─────────────────────────────────────────────── */
+    .grid-wrapper {
+      position: relative;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      box-shadow: var(--shadow);
+    }
+
+    #game-grid {
+      display: grid;
+      gap: 5px;
+    }
+
+    .cell {
+      width:  clamp(44px, 10vw, 72px);
+      height: clamp(44px, 10vw, 72px);
+      border-radius: var(--radius-sm);
+      background: var(--cell-empty);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(1.4rem, 4vw, 2.2rem);
+      transition: background .2s, transform .15s;
+      user-select: none;
+      position: relative;
+      overflow: hidden;
+    }
+    .cell.wall {
+      background: #141420;
+      box-shadow: inset 0 0 12px rgba(0,0,0,.6);
+    }
+    .cell.agent {
+      background: rgba(124,110,245,.18);
+      border: 2px solid rgba(124,110,245,.5);
+    }
+    .cell.cat {
+      background: rgba(245,200,66,.10);
+      border: 2px solid rgba(245,200,66,.35);
+    }
+    .cell.obstacle {
+      background: rgba(245,90,90,.12);
+      border: 2px solid rgba(245,90,90,.4);
+    }
+
+    /* Agent "slide-in" for new position */
+    @keyframes slidein {
+      from { transform: scale(.5); opacity: .4; }
+      to   { transform: scale(1); opacity: 1; }
+    }
+    .cell.agent { animation: slidein .22s ease; }
+
+    /* Cat pulse */
+    @keyframes catpulse {
+      0%, 100% { transform: scale(1); }
+      50%       { transform: scale(1.15); }
+    }
+    .cell.cat { animation: catpulse 1.8s ease-in-out infinite; }
+
+    /* Wall shake on collision */
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25%       { transform: translateX(-5px); }
+      75%       { transform: translateX(5px); }
+    }
+    .shake { animation: shake .25s ease !important; }
+
+    /* ── Arrow Controls ────────────────────────────────────────── */
+    .arrow-pad {
+      display: grid;
+      grid-template-areas:
+        ".    up   ."
+        "left down right";
+      gap: 8px;
+    }
+    .arrow-btn {
+      width: 56px;
+      height: 56px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-size: 1.4rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background .15s, transform .1s, border-color .15s;
+      touch-action: manipulation;
+    }
+    .arrow-btn:hover  { background: var(--surface); border-color: var(--accent); }
+    .arrow-btn:active { transform: scale(.9); background: rgba(124,110,245,.2); }
+
+    [data-dir="0"] { grid-area: up;    }
+    [data-dir="1"] { grid-area: down;  }
+    [data-dir="2"] { grid-area: left;  }
+    [data-dir="3"] { grid-area: right; }
+
+    /* ── Overlay ───────────────────────────────────────────────── */
+    .overlay {
+      position: absolute;
+      inset: 0;
+      border-radius: var(--radius);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      backdrop-filter: blur(6px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .4s;
+      z-index: 10;
+    }
+    .overlay.show { opacity: 1; pointer-events: all; }
+
+    .overlay-win  { background: rgba(10,10,15,.85); }
+    .overlay-lose { background: rgba(10,10,15,.85); }
+
+    .overlay h2 {
+      font-size: clamp(1.6rem, 5vw, 2.4rem);
+      font-weight: 900;
+      text-align: center;
+    }
+    .overlay .sub {
+      font-size: .95rem;
+      color: var(--muted);
+      text-align: center;
+    }
+    .overlay-btn {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border: none;
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      font-weight: 700;
+      font-size: 1rem;
+      padding: 12px 32px;
+      border-radius: 50px;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(124,110,245,.4);
+      transition: transform .15s;
+    }
+    .overlay-btn:hover { transform: translateY(-2px); }
+
+    /* ── Confetti ──────────────────────────────────────────────── */
+    #confetti-canvas {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 999;
+    }
+
+    /* ── Status toast ──────────────────────────────────────────── */
+    #toast {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 50px;
+      padding: 10px 24px;
+      font-size: .9rem;
+      font-weight: 600;
+      color: var(--text);
+      box-shadow: var(--shadow);
+      transition: transform .35s cubic-bezier(.34,1.56,.64,1);
+      z-index: 200;
+      white-space: nowrap;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* ── Score flash ───────────────────────────────────────────── */
+    .score-flash {
+      position: fixed;
+      font-weight: 900;
+      font-size: 1.6rem;
+      pointer-events: none;
+      z-index: 300;
+      animation: floatup .9s ease forwards;
+    }
+    @keyframes floatup {
+      0%   { opacity: 1; transform: translateY(0) scale(1); }
+      100% { opacity: 0; transform: translateY(-70px) scale(1.3); }
+    }
+
+    /* ── CORS error notice ─────────────────────────────────────── */
+    #cors-notice {
+      display: none;
+      background: rgba(245,90,90,.12);
+      border: 1px solid rgba(245,90,90,.4);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      font-size: .88rem;
+      color: #f59090;
+      text-align: center;
+      width: 100%;
+      max-width: 520px;
+    }
+
+    /* ── Legend ────────────────────────────────────────────────── */
+    .legend {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+      font-size: .82rem;
+      color: var(--muted);
+    }
+    .legend span { display: flex; align-items: center; gap: 5px; }
+
+    /* ── Loading spinner ───────────────────────────────────────── */
+    .spinner {
+      width: 32px; height: 32px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Responsive ────────────────────────────────────────────── */
+    @media (max-width: 520px) {
+      .stats { max-width: 100%; }
+      .arrow-btn { width: 50px; height: 50px; font-size: 1.2rem; }
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="confetti-canvas"></canvas>
+<div id="toast"></div>
+
+<div class="app">
+  <!-- Header -->
+  <header>
+    <h1>🐱 Cat Rescue</h1>
+    <p>Navigate the grid and rescue every cat!</p>
+  </header>
+
+  <!-- Controls bar -->
+  <div class="controls-bar">
+    <div class="level-group" id="level-group">
+      <button class="level-btn active" data-level="1">Level 1</button>
+      <button class="level-btn"        data-level="2">Level 2</button>
+      <button class="level-btn"        data-level="3">Level 3</button>
+    </div>
+    <button class="new-game-btn" id="new-game-btn">🔄 New Game</button>
+  </div>
+
+  <!-- CORS error -->
+  <div id="cors-notice">
+    ⚠️ Could not reach the game server. This may be a CORS or network issue.
+    Make sure the backend at <strong>https://vizxal-cat-rescue.hf.space</strong> is running,
+    then refresh the page.
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat-card" id="stat-score">
+      <div class="label">Score</div>
+      <div class="value" id="score-val">0.0</div>
+    </div>
+    <div class="stat-card" id="stat-steps">
+      <div class="label">Steps</div>
+      <div class="value" id="steps-val">0</div>
+    </div>
+    <div class="stat-card" id="stat-cats">
+      <div class="label">Rescued</div>
+      <div class="value" id="cats-val">0</div>
+    </div>
+  </div>
+
+  <!-- Grid -->
+  <div class="grid-wrapper" id="grid-wrapper">
+    <div id="game-grid">
+      <div class="spinner"></div>
+    </div>
+
+    <!-- Win overlay -->
+    <div class="overlay overlay-win" id="win-overlay">
+      <div style="font-size:4rem">🎉</div>
+      <h2 style="color:var(--green)">All Cats Rescued!</h2>
+      <p class="sub" id="win-msg"></p>
+      <button class="overlay-btn" onclick="startNewGame()">Play Again</button>
+    </div>
+
+    <!-- Game-over overlay -->
+    <div class="overlay overlay-lose" id="lose-overlay">
+      <div style="font-size:4rem">😿</div>
+      <h2 style="color:var(--red)">Out of Steps!</h2>
+      <p class="sub" id="lose-msg"></p>
+      <button class="overlay-btn" onclick="startNewGame()">Try Again</button>
+    </div>
+  </div>
+
+  <!-- Arrow pad -->
+  <div class="arrow-pad">
+    <button class="arrow-btn" data-dir="0" aria-label="Up"   >⬆️</button>
+    <button class="arrow-btn" data-dir="2" aria-label="Left" >⬅️</button>
+    <button class="arrow-btn" data-dir="1" aria-label="Down" >⬇️</button>
+    <button class="arrow-btn" data-dir="3" aria-label="Right">➡️</button>
+  </div>
+
+  <!-- Legend -->
+  <div class="legend">
+    <span>😸 Agent</span>
+    <span>🐱 Cat</span>
+    <span>🧱 Wall</span>
+    <span>💥 Obstacle</span>
+    <span>⬜ Empty</span>
+  </div>
+</div>
+
+<script>
+/* ─── Config ─────────────────────────────────────────────────────────────── */
+const API = 'https://vizxal-cat-rescue.hf.space';
+
+// Cell type constants (must match environment.py)
+const EMPTY = 0, WALL = 1, CAT = 2, AGENT = 3, OBSTACLE = 4;
+
+/* ─── State ──────────────────────────────────────────────────────────────── */
+let currentObs   = null;   // latest observation dict from the server
+let currentLevel = 1;
+let totalScore   = 0;
+let busy         = false;  // prevent double-sends while fetch is in-flight
+let agentCell    = null;   // DOM reference to the agent's current cell
+
+/* ─── API helpers ────────────────────────────────────────────────────────── */
+async function apiFetch(path, opts = {}) {
+  const res = await fetch(API + path, {
+    headers: { 'Content-Type': 'application/json' },
+    ...opts,
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function apiReset(level, seed) {
+  const data = await apiFetch('/reset', {
+    method: 'POST',
+    body: JSON.stringify({ level, max_steps: 200, seed: seed ?? null }),
+  });
+  return data.observation;
+}
+
+async function apiStep(action) {
+  const data = await apiFetch('/step', {
+    method: 'POST',
+    body: JSON.stringify({ action }),
+  });
+  return data; // { observation, reward, done, info }
+}
+
+/* ─── Game lifecycle ─────────────────────────────────────────────────────── */
+async function startNewGame() {
+  busy = true;
+  hideOverlays();
+  totalScore = 0;
+
+  // Pick a random seed so each game is different
+  const seed = Math.floor(Math.random() * 99999);
+
+  try {
+    currentObs = await apiReset(currentLevel, seed);
+    updateStats(0, 0, 0);
+    renderGrid(currentObs.grid);
+    document.getElementById('cors-notice').style.display = 'none';
+  } catch (e) {
+    showCorsError();
+  } finally {
+    busy = false;
+  }
+}
+
+async function takeAction(action) {
+  if (busy || !currentObs || currentObs.done) return;
+  busy = true;
+
+  try {
+    const result = await apiStep(action);
+    const { observation: obs, reward, done, info } = result;
+    currentObs = obs;
+
+    // Accumulate score
+    totalScore = Math.round((totalScore + reward) * 100) / 100;
+
+    // Animate stat bump when values change
+    if (info.event === 'cat_rescued' || info.event === 'all_rescued') {
+      spawnScoreFlash('+1.0 🐱');
+      bumpStat('stat-cats');
+    }
+    if (info.event === 'hit_wall' || info.event === 'hit_obstacle') {
+      shakeGrid();
+    }
+
+    updateStats(totalScore, obs.step_count, obs.cats_rescued);
+    renderGrid(obs.grid);
+
+    if (info.event === 'all_rescued') {
+      setTimeout(() => showWin(obs), 400);
+    } else if (done) {
+      setTimeout(() => showLose(obs), 400);
+    }
+  } catch (e) {
+    showToast('⚠️ Server error – try refreshing');
+  } finally {
+    busy = false;
+  }
+}
+
+/* ─── Grid renderer ──────────────────────────────────────────────────────── */
+function renderGrid(grid) {
+  const rows = grid.length;
+  const cols = grid[0].length;
+  const container = document.getElementById('game-grid');
+
+  container.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+
+  // Re-use existing cells if the grid dimensions haven't changed
+  const existingCells = container.querySelectorAll('.cell');
+  const totalCells = rows * cols;
+
+  if (existingCells.length !== totalCells) {
+    container.innerHTML = '';
+    for (let i = 0; i < totalCells; i++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      container.appendChild(cell);
+    }
+  }
+
+  const cells = container.querySelectorAll('.cell');
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const idx  = r * cols + c;
+      const val  = grid[r][c];
+      const cell = cells[idx];
+
+      // Reset classes
+      cell.className = 'cell';
+      cell.textContent = '';
+
+      switch (val) {
+        case WALL:
+          cell.classList.add('wall');
+          cell.textContent = '🧱';
+          break;
+        case CAT:
+          cell.classList.add('cat');
+          cell.textContent = '🐱';
+          break;
+        case AGENT:
+          cell.classList.add('agent');
+          cell.textContent = '😸';
+          agentCell = cell;
+          break;
+        case OBSTACLE:
+          cell.classList.add('obstacle');
+          cell.textContent = '💥';
+          break;
+        default:
+          // EMPTY — just a styled background
+          break;
+      }
+    }
+  }
+}
+
+/* ─── Stats updater ──────────────────────────────────────────────────────── */
+function updateStats(score, steps, rescued) {
+  setText('score-val', score.toFixed(1));
+  setText('steps-val', steps);
+  setText('cats-val', rescued);
+}
+
+function setText(id, val) {
+  const el = document.getElementById(id);
+  if (el.textContent !== String(val)) {
+    el.textContent = val;
+    el.classList.remove('bump');
+    void el.offsetWidth; // force reflow
+    el.classList.add('bump');
+  }
+}
+
+/* ─── Overlays ───────────────────────────────────────────────────────────── */
+function showWin(obs) {
+  document.getElementById('win-msg').textContent =
+    `You rescued all ${obs.cats_rescued} cat${obs.cats_rescued !== 1 ? 's' : ''} in ${obs.step_count} steps! Score: ${totalScore.toFixed(1)}`;
+  document.getElementById('win-overlay').classList.add('show');
+  launchConfetti();
+}
+
+function showLose(obs) {
+  document.getElementById('lose-msg').textContent =
+    `You rescued ${obs.cats_rescued} of ${obs.cats_rescued + (obs.cats_remaining ?? 0)} cats. Score: ${totalScore.toFixed(1)}`;
+  document.getElementById('lose-overlay').classList.add('show');
+}
+
+function hideOverlays() {
+  document.getElementById('win-overlay').classList.remove('show');
+  document.getElementById('lose-overlay').classList.remove('show');
+}
+
+/* ─── Visual effects ─────────────────────────────────────────────────────── */
+function shakeGrid() {
+  const wrapper = document.getElementById('grid-wrapper');
+  wrapper.classList.remove('shake');
+  void wrapper.offsetWidth;
+  wrapper.classList.add('shake');
+  setTimeout(() => wrapper.classList.remove('shake'), 260);
+}
+
+function bumpStat(id) {
+  const el = document.getElementById(id);
+  el.classList.remove('bump');
+  void el.offsetWidth;
+  el.classList.add('bump');
+}
+
+function spawnScoreFlash(text) {
+  const el = document.createElement('div');
+  el.className = 'score-flash';
+  el.textContent = text;
+  el.style.cssText = `top:${window.innerHeight * .4}px;left:${window.innerWidth / 2 - 40}px;color:#42f5a7`;
+  document.body.appendChild(el);
+  el.addEventListener('animationend', () => el.remove());
+}
+
+/* ─── Toast notification ─────────────────────────────────────────────────── */
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+/* ─── CORS / network error ───────────────────────────────────────────────── */
+function showCorsError() {
+  document.getElementById('cors-notice').style.display = 'block';
+  document.getElementById('game-grid').innerHTML = '<div style="color:var(--muted);font-size:.9rem;padding:24px">⚠️ Could not connect to server</div>';
+}
+
+/* ─── Level selector ─────────────────────────────────────────────────────── */
+document.getElementById('level-group').addEventListener('click', e => {
+  const btn = e.target.closest('.level-btn');
+  if (!btn) return;
+  document.querySelectorAll('.level-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentLevel = Number(btn.dataset.level);
+  startNewGame();
+});
+
+/* ─── New Game button ────────────────────────────────────────────────────── */
+document.getElementById('new-game-btn').addEventListener('click', startNewGame);
+
+/* ─── Arrow pad ──────────────────────────────────────────────────────────── */
+document.querySelectorAll('.arrow-btn').forEach(btn => {
+  btn.addEventListener('click', () => takeAction(Number(btn.dataset.dir)));
+  // Touch hold for continuous movement
+  let holdInterval;
+  btn.addEventListener('pointerdown', () => {
+    holdInterval = setInterval(() => takeAction(Number(btn.dataset.dir)), 200);
+  });
+  btn.addEventListener('pointerup',   () => clearInterval(holdInterval));
+  btn.addEventListener('pointerleave',() => clearInterval(holdInterval));
+});
+
+/* ─── Keyboard ───────────────────────────────────────────────────────────── */
+document.addEventListener('keydown', e => {
+  const map = { ArrowUp: 0, ArrowDown: 1, ArrowLeft: 2, ArrowRight: 3,
+                w: 0, s: 1, a: 2, d: 3 };
+  if (e.key in map) {
+    e.preventDefault();
+    takeAction(map[e.key]);
+  }
+});
+
+/* ─── Confetti ───────────────────────────────────────────────────────────── */
+function launchConfetti() {
+  const canvas = document.getElementById('confetti-canvas');
+  const ctx    = canvas.getContext('2d');
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  const COLORS = ['#7c6ef5','#f56ef5','#f5c842','#42f5a7','#f55a5a','#5af5f5'];
+  const pieces = Array.from({ length: 140 }, () => ({
+    x:    Math.random() * canvas.width,
+    y:    Math.random() * -canvas.height,
+    r:    Math.random() * 7 + 3,
+    d:    Math.random() * 140,
+    color: COLORS[Math.floor(Math.random() * COLORS.length)],
+    tilt: Math.random() * 10 - 10,
+    tiltSpeed: Math.random() * .1 + .05,
+    speed: Math.random() * 3 + 1.5,
+  }));
+
+  let angle = 0;
+  let frame;
+  let startTime = Date.now();
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    angle += .01;
+    pieces.forEach(p => {
+      p.y += p.speed;
+      p.tilt += p.tiltSpeed;
+      if (p.y > canvas.height) { p.y = -10; p.x = Math.random() * canvas.width; }
+      ctx.beginPath();
+      ctx.lineWidth = p.r;
+      ctx.strokeStyle = p.color;
+      ctx.moveTo(p.x + p.tilt + p.r / 2, p.y);
+      ctx.lineTo(p.x + p.tilt, p.y + p.tilt + p.r / 2);
+      ctx.stroke();
+    });
+    if (Date.now() - startTime < 4000) {
+      frame = requestAnimationFrame(draw);
+    } else {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+  }
+  cancelAnimationFrame(frame);
+  draw();
+}
+
+/* ─── Boot ───────────────────────────────────────────────────────────────── */
+startNewGame();
+</script>
+</body>
+</html>
