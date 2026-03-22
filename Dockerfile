@@ -35,6 +35,7 @@ COPY environment.py .
 COPY rewards.py     .
 COPY grader.py      .
 COPY server.py      .
+COPY index.html     .
 
 # ── Expose the port ───────────────────────────────────────────────────────────
 # HuggingFace Spaces routes external traffic to port 7860
